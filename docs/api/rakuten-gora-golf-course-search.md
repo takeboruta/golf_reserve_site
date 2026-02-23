@@ -6,18 +6,21 @@
 
 ## 1. Endpoint
 
-- URL: `https://app.rakuten.co.jp/services/api/Gora/GoraGolfCourseSearch/20170623`
+- 公式URL（ドキュメント）:
+  - `https://openapi.rakuten.co.jp/engine/api/Gora/GoraGolfCourseSearch/20170623?format=json&...`
 - Method: `GET`
 - Format: `json`（`formatVersion=2` 推奨）
 
 ## 2. Authentication
 
 - Required: `applicationId`
+- Optional: `accessKey`（実装では設定時に送信）
 - Optional: `affiliateId`
 
 実装上はサーバー環境変数で管理する。
 
 - `RAKUTEN_APP_ID`（または `RAKUTEN_APPLICATION_ID`）
+- `RAKUTEN_ACCESS_KEY`（推奨）
 - `RAKUTEN_AFFILIATE_ID`（任意）
 
 ## 3. Request Parameters（主要）
@@ -25,6 +28,7 @@
 | Name | Required | Type | Description |
 |---|---|---|---|
 | `applicationId` | Yes | string | 楽天WebサービスのアプリケーションID |
+| `accessKey` | No | string | アクセスキー |
 | `affiliateId` | No | string | 楽天アフィリエイトID |
 | `format` | No | string | `json` を使用 |
 | `formatVersion` | No | number/string | `2` を指定するとフラットなJSON形式 |
@@ -45,7 +49,7 @@
   "last": 30,
   "hits": 30,
   "pageCount": 4,
-  "items": [
+  "Items": [
     {
       "golfCourseId": 12345,
       "golfCourseName": "サンプルゴルフクラブ",
@@ -64,12 +68,12 @@
 | `page` | number | 現在ページ |
 | `hits` | number | 取得件数 |
 | `pageCount` | number | 総ページ数 |
-| `items[]` | array | ゴルフ場配列 |
-| `items[].golfCourseId` | number | ゴルフ場ID |
-| `items[].golfCourseName` | string | ゴルフ場名 |
-| `items[].address` | string | 住所 |
-| `items[].golfCourseImageUrl` | string | コース画像URL |
-| `items[].evaluation` | number | 評価 |
+| `Items[]` | array | ゴルフ場配列 |
+| `Items[].golfCourseId` | number | ゴルフ場ID |
+| `Items[].golfCourseName` | string | ゴルフ場名 |
+| `Items[].address` | string | 住所 |
+| `Items[].golfCourseImageUrl` | string | コース画像URL |
+| `Items[].evaluation` | number | 評価 |
 
 アプリ側の型定義は `src/types/gora.ts` を参照。
 

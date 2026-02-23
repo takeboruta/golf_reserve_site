@@ -14,27 +14,36 @@
   - `GET /api/search`
   - `GET /api/courses/[courseId]/calendar`
 
-## 認証・設定
+## 認証・設定（現行実装）
 
 - 必須: `RAKUTEN_APP_ID`（または `RAKUTEN_APPLICATION_ID`）
-- 任意: `RAKUTEN_AFFILIATE_ID`（成果計測用。サーバー環境変数のみで保持し、楽天API呼び出し時にパラメータとして付与。本番は Vercel の Environment Variables に設定。`NEXT_PUBLIC_` は付けない）
-- バリデーション:
-  - 未設定は `missing_app_id`
-  - UUID形式は `invalid_app_id_format`
+- 任意: `RAKUTEN_ACCESS_KEY`
+- 任意: `RAKUTEN_AFFILIATE_ID`
+- 任意: `NEXT_PUBLIC_APP_URL`（`Referer`/`Origin` ヘッダー用。未設定時は `http://localhost:3000`）
+
+補足:
+
+- 公式仕様上 `accessKey` が required とされる API があるため、本番運用では `RAKUTEN_ACCESS_KEY` 設定を推奨。
+
+## エンドポイント（現行実装）
+
+- `https://openapi.rakuten.co.jp/engine/api/Gora/GoraGolfCourseSearch/20170623`
+- `https://openapi.rakuten.co.jp/engine/api/Gora/GoraPlanSearch/20170623`
 
 ## プラン検索仕様
 
-- エンドポイント: `GoraPlanSearch/20170623`
 - 主なパラメータ:
   - `applicationId`
   - `playDate`
   - `areaCode` または `golfCourseId`
+  - `keyword`
   - `minPrice` / `maxPrice`
+  - `planLunch`
+  - `startTimeZone`
   - `hits` / `page` / `sort`
 
 ## コース検索仕様
 
-- エンドポイント: `GoraGolfCourseSearch/20170623`
 - 主なパラメータ:
   - `applicationId`
   - `areaCode` / `keyword`

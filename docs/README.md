@@ -18,6 +18,10 @@
 - [都道府県選択UI](./features/location-selection.md)
 - [履歴・お気に入り（Supabase拡張枠）](./features/history-favorites.md)
 
+## 開発運用ルール
+
+- [開発品質ルール（テスト・デグレチェック）](./quality-rules.md)
+
 ## 対象コード
 
 - `src/app`

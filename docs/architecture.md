@@ -12,26 +12,26 @@
 ### Presentation Layer
 
 - `src/app/page.tsx`
-  - 検索条件入力と結果表示のメイン画面
+  - 検索条件入力、URLクエリ同期、結果一覧表示
 - `src/app/courses/[courseId]/page.tsx`
-  - コース別価格カレンダー画面
+  - 価格カレンダー、予約リンク、Googleマップ表示
 - `src/components/SearchForm.tsx`
-  - 検索フォーム
+  - 検索フォーム（キーワード・昼食付き・並び順・開始時間帯を含む）
 - `src/components/PlanCard.tsx`
-  - プランカード表示
+  - プランカード表示（価格/評価/予約導線）
 - `src/components/PrefectureCitySelect.tsx`
   - 都道府県複数選択 UI
 
 ### API Layer
 
 - `GET /api/search`
-  - 楽天GORA取得 + 正規化 + じゃらんデモ合成 + 価格ソート
+  - 楽天GORA取得 + 正規化 + じゃらんデモ合成 + 条件フィルタ + ソート
 - `GET /api/gora/plans`
   - 楽天GORAプラン検索の透過 API
 - `GET /api/gora/courses`
   - 楽天GORAコース検索の透過 API
 - `GET /api/courses/[courseId]/calendar`
-  - 日次最安値カレンダー生成
+  - 日次最安値・予約URL・コース名を返却
 - `GET /api/jalan/plans`
   - じゃらん向けスタブ API
 - `GET/POST /api/history`
@@ -42,8 +42,9 @@
 ### Domain / Integration Layer
 
 - `src/lib/rakuten-api.ts`
-  - 楽天GORA API 呼び出し
-  - `RAKUTEN_APP_ID` バリデーション
+  - 楽天GORA API 呼び出し（`openapi.rakuten.co.jp`）
+  - 環境変数ロード（`RAKUTEN_APP_ID`/`RAKUTEN_ACCESS_KEY`/`RAKUTEN_AFFILIATE_ID`）
+  - `Referer`/`Origin` ヘッダー付与
 - `src/lib/normalize-gora.ts`
   - GORAレスポンスを `NormalizedPlan` へ変換
 - `src/lib/jalan-api.ts`
@@ -61,22 +62,22 @@
 ## 3. 主要データフロー
 
 1. ユーザーが `SearchForm` で条件を入力
-2. `src/app/page.tsx` から `GET /api/search` を呼び出し
+2. `src/app/page.tsx` が URL クエリを更新し、`GET /api/search` を呼び出し
 3. `fetchGoraPlans` が楽天 API からプラン取得
 4. `normalizeGoraPlans` で共通モデル化
 5. `fetchJalanPlans` がデモ用じゃらんデータを合成
-6. API で価格フィルタ・価格昇順ソート
+6. API で条件フィルタ（予算/昼食付き）とソート（価格/評価）
 7. UI で `PlanCard` 一覧表示
 
 ## 4. 非機能・運用上のポイント
 
 - 外部 API 失敗時は `RakutenApiError` を通じて HTTP ステータスにマッピング
 - 価格カレンダー API はレート制御のため 1.1 秒間隔で逐次取得
-- 楽天 API 認証は `RAKUTEN_APP_ID` を必須とし、UUID形式誤設定を検出
+- 検索条件は URL クエリに保持され、戻る操作でも復元可能
 - じゃらんは現状モック表示であり、実課金・実予約連携ではない
 
 ## 5. 既知の制約
 
 - `numberOfPeople` は API レベルで厳密反映していない（将来対応）
-- `/api/courses/[courseId]/calendar` と `/api/search` で GORA `Items/items` の参照揺れが残る
 - 履歴・お気に入りはエンドポイント枠のみで、DB 永続化未実装
+- 外部 API 仕様変更時に `RAKUTEN_ACCESS_KEY` 必須性の再確認が必要

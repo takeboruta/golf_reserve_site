@@ -5,6 +5,7 @@
 ## 設計ドキュメント
 
 - 全体・機能別設計: [`docs/README.md`](docs/README.md)
+- 開発品質ルール: [`docs/quality-rules.md`](docs/quality-rules.md)
 
 ## 技術スタック
 
@@ -33,11 +34,13 @@ cp .env.example .env.local
 
 - `RAKUTEN_APP_ID` … アプリケーションID（楽天でアプリ登録して取得）
 - `RAKUTEN_APPLICATION_ID` でも同じ値を設定可能（`RAKUTEN_APP_ID` のエイリアス）
+- `RAKUTEN_ACCESS_KEY` … アクセスキー（API仕様変更に備えて設定推奨）
 - 登録: https://webservice.rakuten.co.jp/app/list
 
 **任意（楽天アフィリエイト）:**
 
 - `RAKUTEN_AFFILIATE_ID` … 楽天アフィリエイトID（成果計測用）。サーバー環境変数のみで保持（フロントに露出しない）。本番は Vercel の Environment Variables に設定
+- `NEXT_PUBLIC_APP_URL` … 楽天API呼び出し時の `Referer`/`Origin` に使うアプリURL（例: `http://localhost:3000`）
 
 **任意:**
 
@@ -116,7 +119,7 @@ git push -u origin main
 
 | パス | 説明 |
 |------|------|
-| `GET /api/search` | 検索（playDate, areaCode, maxPrice, numberOfPeople） |
+| `GET /api/search` | 検索（playDate, areaCode, keyword, lunchOnly, sort, startTimeZone, minPrice, maxPrice, numberOfPeople） |
 | `GET /api/gora/courses` | 楽天GORA ゴルフ場検索（areaCode / keyword） |
 | `GET /api/gora/plans` | 楽天GORA プラン検索（playDate, areaCode 等） |
 | `GET /api/jalan/plans` | じゃらん プラン検索（スタブ） |
