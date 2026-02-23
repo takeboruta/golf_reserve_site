@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   MapPinIcon,
   ExternalLinkIcon,
+  SearchIcon,
 } from "lucide-react";
 
 interface CalendarDay {
@@ -27,6 +28,11 @@ export default function CourseDetailPage({
   const [days, setDays] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [nearbySummary, setNearbySummary] = useState<string | null>(null);
+  const [nearbyCitations, setNearbyCitations] = useState<{ uri?: string; title?: string }[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyError, setNearbyError] = useState<string | null>(null);
 
   useEffect(() => {
     params.then((p) => setCourseId(p.courseId));
@@ -54,6 +60,27 @@ export default function CourseDetailPage({
   useEffect(() => {
     if (courseId) loadCalendar(courseId);
   }, [courseId, loadCalendar]);
+
+  const loadNearby = useCallback(async () => {
+    if (!courseId || !courseName) return;
+    setNearbyLoading(true);
+    setNearbyError(null);
+    setNearbySummary(null);
+    setNearbyCitations([]);
+    try {
+      const res = await fetch(
+        `/api/courses/${encodeURIComponent(courseId)}/nearby?courseName=${encodeURIComponent(courseName)}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "周辺情報の取得に失敗しました");
+      setNearbySummary(data.summary ?? "");
+      setNearbyCitations(data.citations ?? []);
+    } catch (e) {
+      setNearbyError(e instanceof Error ? e.message : "周辺情報の取得に失敗しました");
+    } finally {
+      setNearbyLoading(false);
+    }
+  }, [courseId, courseName]);
 
   if (!courseId) return null;
 
@@ -134,6 +161,69 @@ export default function CourseDetailPage({
                     <ExternalLinkIcon className="size-3.5" />
                   </a>
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* 周辺情報（Gemini検索：最寄り駅・ホテル・飲食店） */}
+            <Card className="overflow-hidden border-0 shadow-lg shadow-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <SearchIcon className="size-5 text-primary" />
+                  周辺情報（最寄り駅・ホテル・飲食店）
+                </CardTitle>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Geminiの検索でゴルフ場近くの最寄り駅、ホテル、飲食店を調べます
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!nearbySummary && !nearbyLoading && !nearbyError && (
+                  <Button
+                    onClick={loadNearby}
+                    disabled={!courseName}
+                    className="w-full sm:w-auto"
+                  >
+                    <SearchIcon className="size-4 mr-2" />
+                    周辺を調べる
+                  </Button>
+                )}
+                {nearbyLoading && (
+                  <div className="flex items-center gap-3 text-muted-foreground py-4">
+                    <div className="size-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <span className="text-sm">検索中…</span>
+                  </div>
+                )}
+                {nearbyError && (
+                  <p className="text-destructive text-sm">{nearbyError}</p>
+                )}
+                {nearbySummary && (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border bg-muted/20 p-4 text-sm whitespace-pre-line leading-relaxed">
+                      {nearbySummary}
+                    </div>
+                    {nearbyCitations.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs text-muted-foreground w-full">参考リンク:</span>
+                        {nearbyCitations.map((c, i) =>
+                          c.uri ? (
+                            <a
+                              key={i}
+                              href={c.uri}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                            >
+                              {c.title ?? `リンク${i + 1}`}
+                              <ExternalLinkIcon className="size-3" />
+                            </a>
+                          ) : null
+                        )}
+                      </div>
+                    )}
+                    <Button variant="outline" size="sm" onClick={loadNearby} disabled={nearbyLoading}>
+                      再検索
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
