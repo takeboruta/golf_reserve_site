@@ -1,9 +1,7 @@
 import { NextRequest } from "next/server";
-import { fetchGoraPlans } from "@/lib/rakuten-api";
-import { fetchJalanPlans } from "@/lib/jalan-api";
+import { fetchGoraPlans, RakutenApiError } from "@/lib/rakuten-api";
 import { normalizeGoraPlans, type GoraItem } from "@/lib/normalize-gora";
 import type { NormalizedPlan } from "@/types/search";
-import { RakutenApiError } from "@/lib/rakuten-api";
 
 export const dynamic = "force-dynamic";
 
@@ -96,19 +94,6 @@ export async function GET(request: NextRequest) {
       { status: 502 }
     );
   }
-
-  // じゃらん（公式API非公開のため、GORA結果を流用したデモ用データをマージ）
-  const jalanPlans = await fetchJalanPlans(
-    {
-      playDate,
-      areaCode,
-      minPrice: budgetMin,
-      maxPrice: budgetMax,
-      numberOfPeople: people,
-    },
-    allPlans
-  );
-  allPlans = allPlans.concat(jalanPlans);
 
   // 予算で再フィルタ（API側で既に min/max を渡しているが、正規化後の端数で念のため）
   if (budgetMax != null) {

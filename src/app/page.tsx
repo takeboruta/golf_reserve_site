@@ -212,7 +212,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t bg-card/60 py-5 text-center text-xs text-muted-foreground">
-        楽天GORA・じゃらんの料金を比較表示しています。じゃらんは公式API非公開のためデモ用表示です。予約は各サイトで行ってください。
+        楽天GORAの料金を表示しています。予約は各サイトで行ってください。
       </footer>
     </div>
   );
