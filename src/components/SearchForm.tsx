@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,38 +35,58 @@ interface SearchFormProps {
   initialParams?: SearchParams | null;
 }
 
+function getInitialState(initialParams?: SearchParams | null) {
+  if (!initialParams) {
+    return {
+      playDate: tomorrow(),
+      prefectureCodes: ["13"],
+      keyword: "",
+      lunchOnly: false,
+      sort: "price" as const,
+      startTimeZone: "",
+      minPrice: DEFAULT_MIN_PRICE,
+      maxPrice: DEFAULT_MAX_PRICE,
+      numberOfPeople: "4",
+    };
+  }
+
+  const tz = initialParams.startTimeZone ?? "";
+  const sort: "price" | "evaluation" =
+    initialParams.sort === "evaluation" ? "evaluation" : "price";
+  return {
+    playDate: initialParams.playDate || tomorrow(),
+    prefectureCodes: initialParams.areaCode
+      ? initialParams.areaCode.split(",").filter(Boolean)
+      : ["13"],
+    keyword: initialParams.keyword ?? "",
+    lunchOnly: initialParams.lunchOnly === "1",
+    sort,
+    startTimeZone: tz === "0" ? "" : /^([4-9]|1[0-5])$/.test(tz) ? tz : "",
+    minPrice: initialParams.minPrice || DEFAULT_MIN_PRICE,
+    maxPrice: initialParams.maxPrice || DEFAULT_MAX_PRICE,
+    numberOfPeople: initialParams.numberOfPeople || "4",
+  };
+}
+
 export function SearchForm({
   onSearch,
   isLoading = false,
   initialParams,
 }: SearchFormProps) {
-  const [playDate, setPlayDate] = useState(tomorrow());
-  const [prefectureCodes, setPrefectureCodes] = useState<string[]>(["13"]);
-  const [keyword, setKeyword] = useState("");
-  const [lunchOnly, setLunchOnly] = useState(false);
-  const [sort, setSort] = useState<"price" | "evaluation">("price");
-  const [startTimeZone, setStartTimeZone] = useState<string>("");
-  const [minPrice, setMinPrice] = useState(DEFAULT_MIN_PRICE);
-  const [maxPrice, setMaxPrice] = useState(DEFAULT_MAX_PRICE);
-  const [numberOfPeople, setNumberOfPeople] = useState("4");
-
-  useEffect(() => {
-    if (!initialParams) return;
-    setPlayDate(initialParams.playDate || tomorrow());
-    setPrefectureCodes(
-      initialParams.areaCode
-        ? initialParams.areaCode.split(",").filter(Boolean)
-        : ["13"]
-    );
-    setKeyword(initialParams.keyword ?? "");
-    setLunchOnly(initialParams.lunchOnly === "1");
-    setSort(initialParams.sort === "evaluation" ? "evaluation" : "price");
-    const tz = initialParams.startTimeZone ?? "";
-    setStartTimeZone(tz === "0" ? "" : /^([4-9]|1[0-5])$/.test(tz) ? tz : "");
-    setMinPrice(initialParams.minPrice || DEFAULT_MIN_PRICE);
-    setMaxPrice(initialParams.maxPrice || DEFAULT_MAX_PRICE);
-    setNumberOfPeople(initialParams.numberOfPeople || "4");
-  }, [initialParams]);
+  const initialState = getInitialState(initialParams);
+  const [playDate, setPlayDate] = useState(initialState.playDate);
+  const [prefectureCodes, setPrefectureCodes] = useState<string[]>(
+    initialState.prefectureCodes
+  );
+  const [keyword, setKeyword] = useState(initialState.keyword);
+  const [lunchOnly, setLunchOnly] = useState(initialState.lunchOnly);
+  const [sort, setSort] = useState<"price" | "evaluation">(initialState.sort);
+  const [startTimeZone, setStartTimeZone] = useState<string>(
+    initialState.startTimeZone
+  );
+  const [minPrice, setMinPrice] = useState(initialState.minPrice);
+  const [maxPrice, setMaxPrice] = useState(initialState.maxPrice);
+  const [numberOfPeople, setNumberOfPeople] = useState(initialState.numberOfPeople);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

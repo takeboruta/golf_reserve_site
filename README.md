@@ -12,7 +12,7 @@
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui
-- **API**: 楽天GORA API（プラン検索・ゴルフ場検索）、じゃらんゴルフ（公式API非公開のため、GORA結果を流用したデモ用表示）
+- **API**: 楽天GORA API（プラン検索・ゴルフ場検索）、じゃらんゴルフ（スタブ API）
 
 ## セットアップ
 
@@ -44,7 +44,7 @@ cp .env.example .env.local
 
 **任意:**
 
-- `RECRUIT_API_KEY` … じゃらんゴルフ公式API連携用（未設定時は楽天GORA結果を流用したデモ用じゃらん表示）
+- `RECRUIT_API_KEY` … じゃらんゴルフ公式API連携用（現状は未使用の予約パラメータ）
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` … 検索履歴・お気に入り用（未設定時は空で動作）
 
 ### 3. 開発サーバー起動
@@ -119,13 +119,13 @@ git push -u origin main
 
 | パス | 説明 |
 |------|------|
-| `GET /api/search` | 検索（playDate, areaCode, keyword, lunchOnly, sort, startTimeZone, minPrice, maxPrice, numberOfPeople） |
+| `GET /api/search` | 検索（playDate, areaCode, keyword, lunchOnly, sort, startTimeZone, minPrice, maxPrice） |
 | `GET /api/gora/courses` | 楽天GORA ゴルフ場検索（areaCode / keyword） |
 | `GET /api/gora/plans` | 楽天GORA プラン検索（playDate, areaCode 等） |
 | `GET /api/jalan/plans` | じゃらん プラン検索（スタブ） |
 | `GET /api/courses/[courseId]/calendar` | コース別 日別最安値（?days=7 または 30） |
-| `GET/POST /api/history` | 検索履歴（Supabase 連携時） |
-| `GET/POST /api/favorites` | お気に入り（Supabase 連携時） |
+| `GET/POST /api/history` | 検索履歴（Cookie 永続化。Supabase は将来拡張） |
+| `GET/POST /api/favorites` | お気に入り（Cookie 永続化。Supabase は将来拡張） |
 
 ## ビルド
 

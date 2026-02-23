@@ -1,9 +1,18 @@
 import { NextRequest } from "next/server";
 import { fetchGoraPlans, RakutenApiError } from "@/lib/rakuten-api";
 import { normalizeGoraPlans, type GoraItem } from "@/lib/normalize-gora";
+import {
+  getSearchCacheKey,
+  getSearchCache,
+  setSearchCache,
+} from "@/lib/search-cache";
 import type { NormalizedPlan } from "@/types/search";
 
 export const dynamic = "force-dynamic";
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 30;
 
 function isValidPlayDate(s: string): boolean {
   const re = /^\d{4}-\d{2}-\d{2}$/;
@@ -23,6 +32,7 @@ export async function GET(request: NextRequest) {
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const numberOfPeople = searchParams.get("numberOfPeople");
+  void numberOfPeople; // 将来の複数サイト比較用（現状は未使用）
   const lunchOnly = searchParams.get("lunchOnly");
   const sort = searchParams.get("sort") === "evaluation" ? "evaluation" : "price";
   const startTimeZoneParam = searchParams.get("startTimeZone") ?? "";
@@ -34,6 +44,14 @@ export async function GET(request: NextRequest) {
     startTimeZoneNum <= 15
       ? startTimeZoneNum
       : undefined;
+
+  const pageParam = searchParams.get("page");
+  const page = Math.max(1, parseInt(pageParam ?? String(DEFAULT_PAGE), 10) || DEFAULT_PAGE);
+  const perPageParam = searchParams.get("perPage");
+  const perPage = Math.min(
+    MAX_PER_PAGE,
+    Math.max(1, parseInt(perPageParam ?? String(DEFAULT_PER_PAGE), 10) || DEFAULT_PER_PAGE)
+  );
 
   if (!playDate) {
     return Response.json(
@@ -56,11 +74,29 @@ export async function GET(request: NextRequest) {
 
   const budgetMax = maxPrice ? parseInt(maxPrice, 10) : undefined;
   const budgetMin = minPrice ? parseInt(minPrice, 10) : undefined;
-  const people = numberOfPeople ? parseInt(numberOfPeople, 10) : undefined;
-
   let allPlans: NormalizedPlan[] = [];
+  let totalCount = 0;
 
   const planLunch = lunchOnly === "1" ? 1 : undefined;
+
+  const cacheKey = getSearchCacheKey(
+    {
+      playDate,
+      areaCode,
+      keyword,
+      minPrice: minPrice ?? undefined,
+      maxPrice: maxPrice ?? undefined,
+      lunchOnly,
+      sort,
+      startTimeZone: startTimeZoneParam || undefined,
+    },
+    page
+  );
+
+  const cached = getSearchCache<{ playDate: string; areaCode: string; total: number; items: NormalizedPlan[] }>(cacheKey);
+  if (cached) {
+    return Response.json(cached);
+  }
 
   // 楽天GORA
   try {
@@ -72,10 +108,12 @@ export async function GET(request: NextRequest) {
       maxPrice: budgetMax,
       planLunch,
       startTimeZone,
-      hits: 30,
+      hits: perPage,
+      page,
       sort,
     });
-    const goraItems = (goraData as { Items?: GoraItem[] }).Items;
+    const goraItems = (goraData as { Items?: GoraItem[]; count?: number }).Items;
+    totalCount = (goraData as { count?: number }).count ?? 0;
     allPlans = normalizeGoraPlans(goraItems, playDate);
   } catch (e) {
     if (e instanceof RakutenApiError) {
@@ -107,17 +145,22 @@ export async function GET(request: NextRequest) {
     allPlans = allPlans.filter((p) => p.lunch === true);
   }
 
-  // 並び順: 価格の安い順 or 評価が高い順
+  // 並び順: 価格の安い順 or 評価が高い順（GORA がソート済みのため通常はそのまま）
   if (sort === "evaluation") {
     allPlans.sort((a, b) => (b.evaluation ?? 0) - (a.evaluation ?? 0));
   } else {
     allPlans.sort((a, b) => a.priceTotal - b.priceTotal);
   }
 
-  return Response.json({
+  const payload = {
     playDate,
     areaCode,
-    total: allPlans.length,
+    total: totalCount > 0 ? totalCount : allPlans.length,
     items: allPlans,
-  });
+    page,
+    perPage,
+  };
+  setSearchCache(cacheKey, payload);
+
+  return Response.json(payload);
 }

@@ -2,6 +2,11 @@ import { NextRequest } from "next/server";
 import { fetchGoraPlans } from "@/lib/rakuten-api";
 import { normalizeGoraPlans, type GoraItem } from "@/lib/normalize-gora";
 import { RakutenApiError } from "@/lib/rakuten-api";
+import {
+  getCalendarCacheKey,
+  getCalendarCache,
+  setCalendarCache,
+} from "@/lib/calendar-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +44,16 @@ export async function GET(
   const courseIdNum = parseInt(courseId, 10);
   if (Number.isNaN(courseIdNum)) {
     return Response.json({ error: "無効なコースIDです" }, { status: 400 });
+  }
+
+  const cacheKey = getCalendarCacheKey(courseId, dayCount);
+  const cached = getCalendarCache<{
+    courseId: number;
+    courseName: string | null;
+    days: { date: string; minPrice: number | null; reserveUrl: string | null }[];
+  }>(cacheKey);
+  if (cached) {
+    return Response.json(cached);
   }
 
   const dates = getNextDays(dayCount);
@@ -80,9 +95,11 @@ export async function GET(
     await new Promise((r) => setTimeout(r, 1100));
   }
 
-  return Response.json({
+  const payload = {
     courseId: courseIdNum,
     courseName,
     days: results,
-  });
+  };
+  setCalendarCache(cacheKey, payload);
+  return Response.json(payload);
 }

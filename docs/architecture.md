@@ -4,8 +4,8 @@
 
 - フロントエンド: Next.js App Router（Client Component 中心）
 - API層: Next.js Route Handler（`src/app/api/**`）
-- 外部連携: 楽天GORA API、将来のじゃらん公式API（現状はデモ実装）
-- データ永続化: Supabase（現状は接続判定のみ。保存処理は TODO）
+- 外部連携: 楽天GORA API、じゃらん向けスタブ API（将来実連携予定）
+- データ永続化: Cookie（検索履歴・お気に入り）。Supabase は将来拡張
 
 ## 2. レイヤー一覧
 
@@ -25,7 +25,7 @@
 ### API Layer
 
 - `GET /api/search`
-  - 楽天GORA取得 + 正規化 + じゃらんデモ合成 + 条件フィルタ + ソート
+  - 楽天GORA取得 + 正規化 + 条件フィルタ + ソート
 - `GET /api/gora/plans`
   - 楽天GORAプラン検索の透過 API
 - `GET /api/gora/courses`
@@ -33,11 +33,11 @@
 - `GET /api/courses/[courseId]/calendar`
   - 日次最安値・予約URL・コース名を返却
 - `GET /api/jalan/plans`
-  - じゃらん向けスタブ API
+  - じゃらん向けスタブ API（現状空配列）
 - `GET/POST /api/history`
-  - 検索履歴（未実装枠）
+  - 検索履歴（Cookie 永続化）
 - `GET/POST /api/favorites`
-  - お気に入り（未実装枠）
+  - お気に入り（Cookie 永続化）
 
 ### Domain / Integration Layer
 
@@ -48,9 +48,11 @@
 - `src/lib/normalize-gora.ts`
   - GORAレスポンスを `NormalizedPlan` へ変換
 - `src/lib/jalan-api.ts`
-  - GORA結果からのじゃらんデモデータ生成
+  - じゃらん連携のスタブ実装（現状は空配列）
 - `src/lib/supabase.ts`
   - Supabase 設定有無判定
+- `src/lib/cookie-store.ts`
+  - 履歴・お気に入りの Cookie 読み書き共通処理
 
 ### Data / Type Layer
 
@@ -65,19 +67,18 @@
 2. `src/app/page.tsx` が URL クエリを更新し、`GET /api/search` を呼び出し
 3. `fetchGoraPlans` が楽天 API からプラン取得
 4. `normalizeGoraPlans` で共通モデル化
-5. `fetchJalanPlans` がデモ用じゃらんデータを合成
-6. API で条件フィルタ（予算/昼食付き）とソート（価格/評価）
-7. UI で `PlanCard` 一覧表示
+5. API で条件フィルタ（予算/昼食付き）とソート（価格/評価）
+6. UI で `PlanCard` 一覧表示
 
 ## 4. 非機能・運用上のポイント
 
 - 外部 API 失敗時は `RakutenApiError` を通じて HTTP ステータスにマッピング
 - 価格カレンダー API はレート制御のため 1.1 秒間隔で逐次取得
 - 検索条件は URL クエリに保持され、戻る操作でも復元可能
-- じゃらんは現状モック表示であり、実課金・実予約連携ではない
+- 履歴/お気に入りは Cookie（HttpOnly, SameSite=Lax, 1年）で保持
 
 ## 5. 既知の制約
 
-- `numberOfPeople` は API レベルで厳密反映していない（将来対応）
-- 履歴・お気に入りはエンドポイント枠のみで、DB 永続化未実装
+- `numberOfPeople` は `/api/search` では未使用（将来の比較サイト統合向け拡張予定）
+- 履歴・お気に入りのクロスデバイス同期は未対応（Supabase導入時に対応）
 - 外部 API 仕様変更時に `RAKUTEN_ACCESS_KEY` 必須性の再確認が必要

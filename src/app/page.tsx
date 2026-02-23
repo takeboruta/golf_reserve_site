@@ -6,8 +6,7 @@ import { SearchForm, type SearchParams } from "@/components/SearchForm";
 import { PlanCard } from "@/components/PlanCard";
 import type { NormalizedPlan } from "@/types/search";
 
-const INITIAL_PAGE_SIZE = 10;
-const LOAD_MORE_SIZE = 10;
+const PER_PAGE = 20;
 
 const SEARCH_PARAMS_STORAGE_KEY = "golf_search_params";
 
@@ -25,6 +24,8 @@ interface SearchResult {
   areaCode: string;
   total: number;
   items: NormalizedPlan[];
+  page?: number;
+  perPage?: number;
 }
 
 function loadStoredParams(): SearchParams | null {
@@ -60,16 +61,37 @@ function saveStoredParams(params: SearchParams) {
   }
 }
 
+function buildSearchQuery(params: SearchParams, page: number): URLSearchParams {
+  const q = new URLSearchParams({
+    playDate: params.playDate,
+    areaCode: params.areaCode,
+    keyword: params.keyword ?? "",
+    lunchOnly: params.lunchOnly === "1" ? "1" : "0",
+    sort: params.sort === "evaluation" ? "evaluation" : "price",
+    startTimeZone: params.startTimeZone ?? "",
+    page: String(page),
+    perPage: String(PER_PAGE),
+    ...(params.minPrice && { minPrice: params.minPrice }),
+    ...(params.maxPrice && { maxPrice: params.maxPrice }),
+    ...(params.numberOfPeople && { numberOfPeople: params.numberOfPeople }),
+  });
+  return q;
+}
+
 export default function Home() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [displayCount, setDisplayCount] = useState(INITIAL_PAGE_SIZE);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const [restoredParams] = useState<SearchParams | null>(() =>
-    typeof window === "undefined" ? null : loadStoredParams()
-  );
+  const lastSearchParamsRef = useRef<SearchParams | null>(null);
+  const loadingMoreRef = useRef(false);
+  const [restoredParams, setRestoredParams] = useState<SearchParams | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    setRestoredParams(loadStoredParams());
+  }, []);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -89,23 +111,20 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setDisplayCount(INITIAL_PAGE_SIZE);
+    lastSearchParamsRef.current = params;
     try {
-      const q = new URLSearchParams({
-        playDate: params.playDate,
-        areaCode: params.areaCode,
-        keyword: params.keyword ?? "",
-        lunchOnly: params.lunchOnly === "1" ? "1" : "0",
-        sort: params.sort === "evaluation" ? "evaluation" : "price",
-        startTimeZone: params.startTimeZone ?? "",
-        ...(params.minPrice && { minPrice: params.minPrice }),
-        ...(params.maxPrice && { maxPrice: params.maxPrice }),
-        ...(params.numberOfPeople && { numberOfPeople: params.numberOfPeople }),
-      });
+      const q = buildSearchQuery(params, 1);
       const res = await fetch(`/api/search?${q.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "検索に失敗しました");
-      setResult(data);
+      setResult({
+        playDate: data.playDate,
+        areaCode: data.areaCode,
+        total: data.total,
+        items: data.items ?? [],
+        page: data.page ?? 1,
+        perPage: data.perPage ?? PER_PAGE,
+      });
       fetch("/api/history", {
         method: "POST",
         credentials: "same-origin",
@@ -123,7 +142,38 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadHistory]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMoreRef.current) return;
+    const params = lastSearchParamsRef.current;
+    const current = result;
+    if (!params || !current || current.items.length >= current.total) return;
+    const nextPage = (current.page ?? 1) + 1;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const q = buildSearchQuery(params, nextPage);
+      const res = await fetch(`/api/search?${q.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "検索に失敗しました");
+      const newItems = (data.items ?? []) as NormalizedPlan[];
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              items: [...prev.items, ...newItems],
+              page: data.page ?? nextPage,
+            }
+          : prev
+      );
+    } catch {
+      // 次ページ取得失敗は無視（必要なら setError）
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [result]);
 
   useEffect(() => {
     if (restoredParams) runSearch(restoredParams);
@@ -151,25 +201,24 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (!result?.items.length || result.items.length <= INITIAL_PAGE_SIZE) return;
+    const hasMore = result && result.items.length < result.total;
+    if (!hasMore || loadingMore) return;
     const el = loadMoreRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         if (!entry?.isIntersecting) return;
-        setDisplayCount((prev) =>
-          Math.min(prev + LOAD_MORE_SIZE, result.items.length)
-        );
+        loadMore();
       },
       { rootMargin: "100px", threshold: 0 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [result?.items.length]);
+  }, [result?.items.length, result?.total, loadingMore, loadMore]);
 
-  const visibleItems = result?.items.slice(0, displayCount) ?? [];
-  const hasMore = result ? displayCount < result.items.length : false;
+  const visibleItems = result?.items ?? [];
+  const hasMore = result ? result.items.length < result.total : false;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -214,6 +263,7 @@ export default function Home() {
         {/* 検索フォーム：ヒーローと重なるように配置 */}
         <div className="-mt-4 mb-8">
           <SearchForm
+            key={restoredParams ? "restored" : "default"}
             onSearch={handleSearch}
             isLoading={loading}
             initialParams={restoredParams}
@@ -287,10 +337,14 @@ export default function Home() {
                 className="flex justify-center py-6"
                 aria-hidden
               >
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                  読み込み中…
-                </div>
+                {loadingMore ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    読み込み中…
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">もっと見る</span>
+                )}
               </div>
             )}
           </section>
