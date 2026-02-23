@@ -1,65 +1,93 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { SearchForm, type SearchParams } from "@/components/SearchForm";
+import { PlanCard } from "@/components/PlanCard";
+import type { NormalizedPlan } from "@/types/search";
+
+interface SearchResult {
+  playDate: string;
+  areaCode: string;
+  total: number;
+  items: NormalizedPlan[];
+}
 
 export default function Home() {
+  const [result, setResult] = useState<SearchResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSearch = async (params: SearchParams) => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const q = new URLSearchParams({
+        playDate: params.playDate,
+        areaCode: params.areaCode,
+        ...(params.numberOfPeople && { numberOfPeople: params.numberOfPeople }),
+        ...(params.maxPrice && { maxPrice: params.maxPrice }),
+      });
+      const res = await fetch(`/api/search?${q.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "検索に失敗しました");
+      setResult(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "検索に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4">
+          <h1 className="text-xl sm:text-2xl font-bold">
+            ゴルフ場 最安値比較
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-sm text-muted-foreground mt-1">
+            複数サイトの料金をまとめて比較
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8">
+        <section className="mb-8">
+          <SearchForm onSearch={handleSearch} isLoading={loading} />
+        </section>
+
+        {error && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3 text-sm mb-6">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">
+              検索結果（{result.total}件）・総額税込の安い順
+            </h2>
+            <ul className="grid gap-4 sm:gap-6">
+              {result.items.length === 0 ? (
+                <li className="text-muted-foreground py-8 text-center">
+                  該当するプランがありません。日付や予算を変えて再検索してください。
+                </li>
+              ) : (
+                result.items.map((plan) => (
+                  <li key={plan.planId}>
+                    <PlanCard plan={plan} />
+                  </li>
+                ))
+              )}
+            </ul>
+          </section>
+        )}
       </main>
+
+      <footer className="border-t py-4 text-center text-sm text-muted-foreground">
+        楽天GORA等の料金を比較表示しています。予約は各サイトで行ってください。
+      </footer>
     </div>
   );
 }
