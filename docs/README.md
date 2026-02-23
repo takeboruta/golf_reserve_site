@@ -5,6 +5,9 @@
 ## 全体設計
 
 - [アーキテクチャ一覧](./architecture.md)
+- [API仕様: 楽天GORA ゴルフ場検索](./api/rakuten-gora-golf-course-search.md)
+- [API仕様: 楽天GORA ゴルフ場詳細](./api/rakuten-gora-golf-course-detail.md)
+- [API仕様: 楽天GORA プラン検索](./api/rakuten-gora-plan-search.md)
 
 ## 機能設計
 

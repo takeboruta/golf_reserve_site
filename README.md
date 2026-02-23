@@ -37,7 +37,7 @@ cp .env.example .env.local
 
 **任意（楽天アフィリエイト）:**
 
-- `RAKUTEN_AFFILIATE_ID` … 楽天アフィリエイトID（成果計測用）
+- `RAKUTEN_AFFILIATE_ID` … 楽天アフィリエイトID（成果計測用）。サーバー環境変数のみで保持（フロントに露出しない）。本番は Vercel の Environment Variables に設定
 
 **任意:**
 
