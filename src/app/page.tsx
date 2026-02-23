@@ -97,7 +97,6 @@ export default function Home() {
     await runSearch(params);
   };
 
-  // オートスクロール: 下端のセンチネルが表示されたら次の10件を表示
   useEffect(() => {
     if (!result?.items.length || result.items.length <= INITIAL_PAGE_SIZE) return;
     const el = loadMoreRef.current;
@@ -120,50 +119,73 @@ export default function Home() {
   const hasMore = result ? displayCount < result.items.length : false;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-muted/30 to-background">
-      <header className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              ゴルフ場 最安値比較
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Hero */}
+      <div
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.30 0.14 145) 0%, oklch(0.22 0.10 145) 100%)",
+        }}
+      >
+        {/* 背景装飾 */}
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 20% 50%, oklch(0.70 0.16 145) 0%, transparent 50%), radial-gradient(circle at 80% 20%, oklch(0.60 0.20 100) 0%, transparent 40%)",
+          }}
+        />
+        <div className="relative container mx-auto px-4 py-10 sm:py-14 max-w-4xl">
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              ⛳ ゴルフ場 最安値比較
             </h1>
-            <span
-              className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
-              aria-label="ベータ版"
-            >
+            <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold text-white/90 border border-white/30">
               β版
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            複数サイトの料金をまとめて比較
+          <p className="text-sm sm:text-base text-white/75 mt-1">
+            楽天GORA・じゃらんのプランをまとめて比較。今いちばん安いプランがすぐわかります。
           </p>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 max-w-4xl">
-        <section className="mb-8">
+      <main className="flex-1 container mx-auto px-4 max-w-4xl">
+        {/* 検索フォーム：ヒーローと重なるように配置 */}
+        <div className="-mt-4 mb-8">
           <SearchForm
             onSearch={handleSearch}
             isLoading={loading}
             initialParams={restoredParams}
           />
-        </section>
+        </div>
 
         {error && (
-          <div className="rounded-xl border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3 text-sm mb-6">
+          <div className="rounded-xl border border-destructive/40 bg-destructive/8 text-destructive px-4 py-3 text-sm mb-6">
             {error}
           </div>
         )}
 
         {result && (
-          <section className="space-y-4">
-            <h2 className="text-lg font-semibold">
-              検索結果（{result.total}件）・総額税込の安い順
-            </h2>
+          <section className="space-y-4 pb-12">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-foreground/80">
+                検索結果
+                <span className="ml-2 text-primary font-bold text-lg">
+                  {result.total}件
+                </span>
+                <span className="ml-1 text-sm text-muted-foreground">
+                  · 総額税込の安い順
+                </span>
+              </h2>
+            </div>
             <ul className="grid gap-4 sm:gap-5">
               {result.items.length === 0 ? (
-                <li className="rounded-xl border bg-card py-12 text-center text-muted-foreground">
-                  該当するプランがありません。日付や予算を変えて再検索してください。
+                <li className="rounded-2xl border bg-card py-14 text-center text-muted-foreground">
+                  <p className="text-3xl mb-3">⛳</p>
+                  <p className="font-medium">該当するプランがありません</p>
+                  <p className="text-sm mt-1">日付や予算を変えて再検索してください</p>
                 </li>
               ) : (
                 visibleItems.map((plan) => (
@@ -179,16 +201,17 @@ export default function Home() {
                 className="flex justify-center py-6"
                 aria-hidden
               >
-                <span className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                   読み込み中…
-                </span>
+                </div>
               </div>
             )}
           </section>
         )}
       </main>
 
-      <footer className="border-t bg-card/50 py-4 text-center text-sm text-muted-foreground">
+      <footer className="border-t bg-card/60 py-5 text-center text-xs text-muted-foreground">
         楽天GORA・じゃらんの料金を比較表示しています。じゃらんは公式API非公開のためデモ用表示です。予約は各サイトで行ってください。
       </footer>
     </div>
