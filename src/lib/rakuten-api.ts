@@ -80,13 +80,18 @@ export async function fetchGoraCourses(params: {
   return data;
 }
 
-/** プラン検索（プレー日・エリア・予算） */
+/** プラン検索（プレー日・エリア・予算・キーワード・昼食付き・開始時間帯） */
 export async function fetchGoraPlans(params: {
   playDate: string;
   areaCode?: string;
   golfCourseId?: number;
+  keyword?: string;
   minPrice?: number;
   maxPrice?: number;
+  /** 0=指定しない, 1=昼食付きのみ */
+  planLunch?: number;
+  /** 開始時間帯（時台）0=指定しない, 4〜15=4時台〜15時台以降。APIのstartTimeZoneパラメータにそのまま渡す */
+  startTimeZone?: number;
   hits?: number;
   page?: number;
   sort?: string;
@@ -103,8 +108,13 @@ export async function fetchGoraPlans(params: {
     ...(params.golfCourseId != null && {
       golfCourseId: String(params.golfCourseId),
     }),
+    ...(params.keyword && params.keyword.trim() && { keyword: params.keyword.trim() }),
     ...(params.minPrice != null && { minPrice: String(params.minPrice) }),
     ...(params.maxPrice != null && { maxPrice: String(params.maxPrice) }),
+    ...(params.planLunch != null && params.planLunch === 1 && { planLunch: "1" }),
+    ...(params.startTimeZone != null && params.startTimeZone >= 4 && params.startTimeZone <= 15 && {
+      startTimeZone: String(params.startTimeZone),
+    }),
     ...(params.hits && { hits: String(params.hits) }),
     ...(params.page && { page: String(params.page) }),
     ...(params.sort && { sort: params.sort }),

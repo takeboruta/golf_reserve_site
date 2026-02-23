@@ -59,6 +59,7 @@ export function normalizeGoraPlans(
           playDate,
           startTimeZone: p.startTimeZone,
           lunch: p.lunch === 1,
+          evaluation: course.evaluation,
         });
       }
     } else if (course.planId != null && course.price != null) {
@@ -75,6 +76,7 @@ export function normalizeGoraPlans(
         playDate,
         startTimeZone: course.startTimeZone,
         lunch: course.lunch === 1,
+        evaluation: course.evaluation,
       });
     }
   }

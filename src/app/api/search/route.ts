@@ -21,9 +21,21 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const playDate = searchParams.get("playDate");
   const areaCode = searchParams.get("areaCode") ?? undefined;
+  const keyword = searchParams.get("keyword") ?? undefined;
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const numberOfPeople = searchParams.get("numberOfPeople");
+  const lunchOnly = searchParams.get("lunchOnly");
+  const sort = searchParams.get("sort") === "evaluation" ? "evaluation" : "price";
+  const startTimeZoneParam = searchParams.get("startTimeZone") ?? "";
+  const startTimeZoneNum = startTimeZoneParam === "" ? undefined : parseInt(startTimeZoneParam, 10);
+  const startTimeZone =
+    typeof startTimeZoneNum === "number" &&
+    !Number.isNaN(startTimeZoneNum) &&
+    startTimeZoneNum >= 4 &&
+    startTimeZoneNum <= 15
+      ? startTimeZoneNum
+      : undefined;
 
   if (!playDate) {
     return Response.json(
@@ -50,15 +62,20 @@ export async function GET(request: NextRequest) {
 
   let allPlans: NormalizedPlan[] = [];
 
+  const planLunch = lunchOnly === "1" ? 1 : undefined;
+
   // 楽天GORA
   try {
     const goraData = await fetchGoraPlans({
       playDate,
       areaCode,
+      keyword: keyword?.trim() || undefined,
       minPrice: budgetMin,
       maxPrice: budgetMax,
+      planLunch,
+      startTimeZone,
       hits: 30,
-      sort: "price",
+      sort,
     });
     const goraItems = (goraData as { Items?: GoraItem[] }).Items;
     allPlans = normalizeGoraPlans(goraItems, playDate);
@@ -93,7 +110,6 @@ export async function GET(request: NextRequest) {
   );
   allPlans = allPlans.concat(jalanPlans);
 
-  // 人数フィルタ（GORAの playerNumMin/Max はプラン単位のため、ここでは簡易に予算のみ）
   // 予算で再フィルタ（API側で既に min/max を渡しているが、正規化後の端数で念のため）
   if (budgetMax != null) {
     allPlans = allPlans.filter((p) => p.priceTotal <= budgetMax);
@@ -101,9 +117,17 @@ export async function GET(request: NextRequest) {
   if (budgetMin != null) {
     allPlans = allPlans.filter((p) => p.priceTotal >= budgetMin);
   }
+  // 昼食付き指定時はマージ結果も昼食付きで統一
+  if (planLunch === 1) {
+    allPlans = allPlans.filter((p) => p.lunch === true);
+  }
 
-  // 総額（税込）昇順
-  allPlans.sort((a, b) => a.priceTotal - b.priceTotal);
+  // 並び順: 価格の安い順 or 評価が高い順
+  if (sort === "evaluation") {
+    allPlans.sort((a, b) => (b.evaluation ?? 0) - (a.evaluation ?? 0));
+  } else {
+    allPlans.sort((a, b) => a.priceTotal - b.priceTotal);
+  }
 
   return Response.json({
     playDate,

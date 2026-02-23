@@ -30,6 +30,8 @@ export interface NormalizedPlan {
   startTimeZone?: string;
   /** 昼食付き等 */
   lunch?: boolean;
+  /** 評価（ソート用・GORA） */
+  evaluation?: number;
 }
 
 export interface NormalizedCourse {

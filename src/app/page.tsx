@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { SearchForm, type SearchParams } from "@/components/SearchForm";
 import { PlanCard } from "@/components/PlanCard";
 import type { NormalizedPlan } from "@/types/search";
+
+const INITIAL_PAGE_SIZE = 10;
+const LOAD_MORE_SIZE = 10;
 
 const SEARCH_PARAMS_STORAGE_KEY = "golf_search_params";
 
@@ -19,8 +22,20 @@ function loadStoredParams(): SearchParams | null {
   try {
     const raw = sessionStorage.getItem(SEARCH_PARAMS_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as SearchParams;
-    return parsed && parsed.playDate && parsed.areaCode ? parsed : null;
+    const parsed = JSON.parse(raw) as Partial<SearchParams>;
+    if (!parsed?.playDate || !parsed?.areaCode) return null;
+    return {
+      ...parsed,
+      playDate: parsed.playDate,
+      areaCode: parsed.areaCode,
+      keyword: parsed.keyword ?? "",
+      lunchOnly: parsed.lunchOnly ?? "0",
+      sort: parsed.sort === "evaluation" ? "evaluation" : "price",
+      startTimeZone: parsed.startTimeZone ?? "",
+      minPrice: parsed.minPrice ?? "10000",
+      maxPrice: parsed.maxPrice ?? "20000",
+      numberOfPeople: parsed.numberOfPeople ?? "4",
+    } as SearchParams;
   } catch {
     return null;
   }
@@ -39,6 +54,8 @@ export default function Home() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [displayCount, setDisplayCount] = useState(INITIAL_PAGE_SIZE);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [restoredParams] = useState<SearchParams | null>(() =>
     typeof window === "undefined" ? null : loadStoredParams()
   );
@@ -47,10 +64,15 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setDisplayCount(INITIAL_PAGE_SIZE);
     try {
       const q = new URLSearchParams({
         playDate: params.playDate,
         areaCode: params.areaCode,
+        keyword: params.keyword ?? "",
+        lunchOnly: params.lunchOnly === "1" ? "1" : "0",
+        sort: params.sort === "evaluation" ? "evaluation" : "price",
+        startTimeZone: params.startTimeZone ?? "",
         ...(params.minPrice && { minPrice: params.minPrice }),
         ...(params.maxPrice && { maxPrice: params.maxPrice }),
         ...(params.numberOfPeople && { numberOfPeople: params.numberOfPeople }),
@@ -74,6 +96,28 @@ export default function Home() {
     saveStoredParams(params);
     await runSearch(params);
   };
+
+  // オートスクロール: 下端のセンチネルが表示されたら次の10件を表示
+  useEffect(() => {
+    if (!result?.items.length || result.items.length <= INITIAL_PAGE_SIZE) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) return;
+        setDisplayCount((prev) =>
+          Math.min(prev + LOAD_MORE_SIZE, result.items.length)
+        );
+      },
+      { rootMargin: "100px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [result?.items.length]);
+
+  const visibleItems = result?.items.slice(0, displayCount) ?? [];
+  const hasMore = result ? displayCount < result.items.length : false;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-muted/30 to-background">
@@ -122,13 +166,24 @@ export default function Home() {
                   該当するプランがありません。日付や予算を変えて再検索してください。
                 </li>
               ) : (
-                result.items.map((plan) => (
+                visibleItems.map((plan) => (
                   <li key={plan.planId}>
                     <PlanCard plan={plan} />
                   </li>
                 ))
               )}
             </ul>
+            {result.items.length > 0 && hasMore && (
+              <div
+                ref={loadMoreRef}
+                className="flex justify-center py-6"
+                aria-hidden
+              >
+                <span className="text-sm text-muted-foreground">
+                  読み込み中…
+                </span>
+              </div>
+            )}
           </section>
         )}
       </main>

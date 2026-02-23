@@ -19,6 +19,10 @@ const DEFAULT_MAX_PRICE = "20000";
 export interface SearchParams {
   playDate: string;
   areaCode: string;
+  keyword: string;
+  lunchOnly: string;
+  sort: string;
+  startTimeZone: string;
   minPrice: string;
   maxPrice: string;
   numberOfPeople: string;
@@ -38,6 +42,10 @@ export function SearchForm({
 }: SearchFormProps) {
   const [playDate, setPlayDate] = useState(tomorrow());
   const [prefectureCodes, setPrefectureCodes] = useState<string[]>(["13"]);
+  const [keyword, setKeyword] = useState("");
+  const [lunchOnly, setLunchOnly] = useState(false);
+  const [sort, setSort] = useState<"price" | "evaluation">("price");
+  const [startTimeZone, setStartTimeZone] = useState<string>("");
   const [minPrice, setMinPrice] = useState(DEFAULT_MIN_PRICE);
   const [maxPrice, setMaxPrice] = useState(DEFAULT_MAX_PRICE);
   const [numberOfPeople, setNumberOfPeople] = useState("4");
@@ -50,6 +58,11 @@ export function SearchForm({
         ? initialParams.areaCode.split(",").filter(Boolean)
         : ["13"]
     );
+    setKeyword(initialParams.keyword ?? "");
+    setLunchOnly(initialParams.lunchOnly === "1");
+    setSort(initialParams.sort === "evaluation" ? "evaluation" : "price");
+    const tz = initialParams.startTimeZone ?? "";
+    setStartTimeZone(tz === "0" ? "" : /^([4-9]|1[0-5])$/.test(tz) ? tz : "");
     setMinPrice(initialParams.minPrice || DEFAULT_MIN_PRICE);
     setMaxPrice(initialParams.maxPrice || DEFAULT_MAX_PRICE);
     setNumberOfPeople(initialParams.numberOfPeople || "4");
@@ -61,6 +74,10 @@ export function SearchForm({
     onSearch({
       playDate,
       areaCode: prefectureCodes.join(","),
+      keyword: keyword.trim(),
+      lunchOnly: lunchOnly ? "1" : "0",
+      sort,
+      startTimeZone,
       minPrice: minPrice.trim() || DEFAULT_MIN_PRICE,
       maxPrice: maxPrice.trim() || DEFAULT_MAX_PRICE,
       numberOfPeople: numberOfPeople.trim() || "4",
@@ -91,6 +108,70 @@ export function SearchForm({
             value={prefectureCodes}
             onChange={setPrefectureCodes}
           />
+          <div className="grid gap-2">
+            <label htmlFor="keyword" className="text-sm font-medium">
+              キーワード（ゴルフ場名）
+            </label>
+            <Input
+              id="keyword"
+              type="text"
+              placeholder="例: 〇〇カントリー"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="lunchOnly"
+              type="checkbox"
+              checked={lunchOnly}
+              onChange={(e) => setLunchOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-input"
+            />
+            <label htmlFor="lunchOnly" className="text-sm font-medium cursor-pointer">
+              昼食付きのみ
+            </label>
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="sort" className="text-sm font-medium">
+              並び順
+            </label>
+            <select
+              id="sort"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as "price" | "evaluation")}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="price">価格の安い順</option>
+              <option value="evaluation">評価が高い順</option>
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="startTimeZone" className="text-sm font-medium">
+              開始時間帯
+            </label>
+            <select
+              id="startTimeZone"
+              value={startTimeZone}
+              onChange={(e) => setStartTimeZone(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">指定しない</option>
+              <option value="4">4時台</option>
+              <option value="5">5時台</option>
+              <option value="6">6時台</option>
+              <option value="7">7時台</option>
+              <option value="8">8時台</option>
+              <option value="9">9時台</option>
+              <option value="10">10時台</option>
+              <option value="11">11時台</option>
+              <option value="12">12時台</option>
+              <option value="13">13時台</option>
+              <option value="14">14時台</option>
+              <option value="15">15時台以降</option>
+            </select>
+          </div>
           <div className="grid gap-2">
             <span className="text-sm font-medium">
               プレー料金 ※総額（円）
