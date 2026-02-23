@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       keyword,
       minPrice: minPrice ?? undefined,
       maxPrice: maxPrice ?? undefined,
-      lunchOnly,
+      lunchOnly: lunchOnly ?? undefined,
       sort,
       startTimeZone: startTimeZoneParam || undefined,
     },
