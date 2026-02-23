@@ -2,6 +2,10 @@
 
 複数予約サイト（楽天GORA・じゃらんゴルフ等）の料金をまとめて比較し、**総額（税込）の安い順**で表示する Web アプリです。
 
+## 設計ドキュメント
+
+- 全体・機能別設計: [`docs/README.md`](docs/README.md)
+
 ## 技術スタック
 
 - **Framework**: Next.js 16 (App Router)

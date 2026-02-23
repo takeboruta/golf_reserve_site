@@ -42,7 +42,8 @@ export async function GET(
   }
 
   const dates = getNextDays(dayCount);
-  const results: { date: string; minPrice: number | null }[] = [];
+  const results: { date: string; minPrice: number | null; reserveUrl: string | null }[] = [];
+  let courseName: string | null = null;
 
   for (const playDate of dates) {
     try {
@@ -52,16 +53,23 @@ export async function GET(
         hits: 30,
         sort: "price",
       });
-      const goraItems = (goraData as { items?: GoraItem[] }).items;
+      const goraItems = (goraData as { Items?: GoraItem[] }).Items;
       const plans = normalizeGoraPlans(goraItems, playDate);
       const minPrice =
         plans.length > 0
           ? Math.min(...plans.map((p) => p.priceTotal))
           : null;
-      results.push({ date: playDate, minPrice });
+      const cheapest = plans.length > 0
+        ? plans.reduce((a, b) => (a.priceTotal <= b.priceTotal ? a : b))
+        : null;
+      const reserveUrl = cheapest?.reserveUrl ?? null;
+      if (plans.length > 0 && !courseName) {
+        courseName = plans[0].courseName ?? null;
+      }
+      results.push({ date: playDate, minPrice, reserveUrl });
     } catch (e) {
       if (e instanceof RakutenApiError) {
-        results.push({ date: playDate, minPrice: null });
+        results.push({ date: playDate, minPrice: null, reserveUrl: null });
       } else {
         return Response.json(
           { error: "カレンダー取得に失敗しました" },
@@ -69,12 +77,12 @@ export async function GET(
         );
       }
     }
-    // 楽天APIのレート制限対策（1秒1リクエスト目安）
     await new Promise((r) => setTimeout(r, 1100));
   }
 
   return Response.json({
     courseId: courseIdNum,
+    courseName,
     days: results,
   });
 }

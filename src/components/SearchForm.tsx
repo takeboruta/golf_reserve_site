@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GORA_AREA_OPTIONS } from "@/lib/constants";
+import { PrefectureCitySelect } from "@/components/PrefectureCitySelect";
 import { SearchIcon } from "lucide-react";
 
 const tomorrow = () => {
@@ -27,29 +27,40 @@ export interface SearchParams {
 interface SearchFormProps {
   onSearch: (params: SearchParams) => void;
   isLoading?: boolean;
+  /** 復元する検索条件（コース詳細から戻ったときなど） */
+  initialParams?: SearchParams | null;
 }
 
-export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
+export function SearchForm({
+  onSearch,
+  isLoading = false,
+  initialParams,
+}: SearchFormProps) {
   const [playDate, setPlayDate] = useState(tomorrow());
-  const [areaCodes, setAreaCodes] = useState<string[]>(["102"]);
+  const [prefectureCodes, setPrefectureCodes] = useState<string[]>(["13"]);
   const [minPrice, setMinPrice] = useState(DEFAULT_MIN_PRICE);
   const [maxPrice, setMaxPrice] = useState(DEFAULT_MAX_PRICE);
   const [numberOfPeople, setNumberOfPeople] = useState("4");
 
-  const toggleArea = (value: string) => {
-    setAreaCodes((prev) =>
-      prev.includes(value)
-        ? prev.filter((v) => v !== value)
-        : [...prev, value]
+  useEffect(() => {
+    if (!initialParams) return;
+    setPlayDate(initialParams.playDate || tomorrow());
+    setPrefectureCodes(
+      initialParams.areaCode
+        ? initialParams.areaCode.split(",").filter(Boolean)
+        : ["13"]
     );
-  };
+    setMinPrice(initialParams.minPrice || DEFAULT_MIN_PRICE);
+    setMaxPrice(initialParams.maxPrice || DEFAULT_MAX_PRICE);
+    setNumberOfPeople(initialParams.numberOfPeople || "4");
+  }, [initialParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const areaCode = areaCodes.length > 0 ? areaCodes.join(",") : "102";
+    if (prefectureCodes.length === 0) return;
     onSearch({
       playDate,
-      areaCode,
+      areaCode: prefectureCodes.join(","),
       minPrice: minPrice.trim() || DEFAULT_MIN_PRICE,
       maxPrice: maxPrice.trim() || DEFAULT_MAX_PRICE,
       numberOfPeople: numberOfPeople.trim() || "4",
@@ -57,7 +68,7 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
+    <Card className="w-full max-w-lg mx-auto border-0 shadow-lg shadow-primary/5 rounded-2xl overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg sm:text-xl">条件で検索</CardTitle>
       </CardHeader>
@@ -76,49 +87,35 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
               className="w-full"
             />
           </div>
+          <PrefectureCitySelect
+            value={prefectureCodes}
+            onChange={setPrefectureCodes}
+          />
           <div className="grid gap-2">
-            <span className="text-sm font-medium">エリア（複数選択可）</span>
-            <div className="max-h-40 overflow-y-auto rounded-md border border-input p-3 space-y-2 bg-transparent">
-              {GORA_AREA_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={areaCodes.includes(opt.value)}
-                    onChange={() => toggleArea(opt.value)}
-                    className="rounded border-input"
-                  />
-                  <span className="text-sm">{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <label htmlFor="minPrice" className="text-sm font-medium">
-                予算下限（円）
-              </label>
+            <span className="text-sm font-medium">
+              プレー料金 ※総額（円）
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
               <Input
                 id="minPrice"
                 type="number"
                 min={0}
+                placeholder="指定なし"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
+                className="w-28"
               />
-            </div>
-            <div className="grid gap-2">
-              <label htmlFor="maxPrice" className="text-sm font-medium">
-                予算上限（円）
-              </label>
+              <span className="text-sm text-muted-foreground">円から</span>
               <Input
                 id="maxPrice"
                 type="number"
                 min={0}
+                placeholder="指定なし"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
+                className="w-28"
               />
+              <span className="text-sm text-muted-foreground">円</span>
             </div>
           </div>
           <div className="grid gap-2">
@@ -134,7 +131,11 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
               onChange={(e) => setNumberOfPeople(e.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading || prefectureCodes.length === 0}
+          >
             <SearchIcon className="size-4" />
             {isLoading ? "検索中…" : "最安値を検索"}
           </Button>
