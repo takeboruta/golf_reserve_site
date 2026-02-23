@@ -11,26 +11,12 @@ import {
   ExternalLinkIcon,
   SearchIcon,
   ChevronDownIcon,
-  HotelIcon,
-  StarIcon,
 } from "lucide-react";
 
 interface CalendarDay {
   date: string;
   minPrice: number | null;
   reserveUrl: string | null;
-}
-
-interface Hotel {
-  hotelNo?: number;
-  hotelName?: string;
-  hotelUrl?: string;
-  imageUrl?: string;
-  reviewAverage?: number;
-  reviewCount?: number;
-  minCharge?: number;
-  nearestStation?: string;
-  address?: string;
 }
 
 /** 日付文字列から曜日インデックスを返す（0=日, 6=土）ローカル時間で処理 */
@@ -78,12 +64,6 @@ export default function CourseDetailPage({
   const [nearbyCitations, setNearbyCitations] = useState<{ uri?: string; title?: string }[]>([]);
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
-
-  // 周辺ホテル
-  const [hotels, setHotels] = useState<Hotel[] | null>(null);
-  const [hotelsLoading, setHotelsLoading] = useState(false);
-  const [hotelsError, setHotelsError] = useState<string | null>(null);
-  const [hotelsArea, setHotelsArea] = useState<string | null>(null);
 
   useEffect(() => {
     params.then((p) => setCourseId(p.courseId));
@@ -133,27 +113,6 @@ export default function CourseDetailPage({
       setNearbyLoading(false);
     }
   }, [courseId, courseName, nearbySearchWord]);
-
-  const loadHotels = useCallback(async () => {
-    if (!courseId) return;
-    setHotelsLoading(true);
-    setHotelsError(null);
-    setHotels(null);
-    setHotelsArea(null);
-    try {
-      const res = await fetch(
-        `/api/courses/${encodeURIComponent(courseId)}/hotels`
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "取得に失敗しました");
-      setHotels(data.hotels ?? []);
-      setHotelsArea(data.area ?? null);
-    } catch (e) {
-      setHotelsError(e instanceof Error ? e.message : "取得に失敗しました");
-    } finally {
-      setHotelsLoading(false);
-    }
-  }, [courseId]);
 
   if (!courseId) return null;
 
@@ -247,135 +206,6 @@ export default function CourseDetailPage({
                   </Button>
                 </div>
               )}
-            </section>
-
-            {/* ── 周辺ホテルセクション ── */}
-            <section className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-border/50 flex items-center gap-2.5">
-                <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <HotelIcon className="size-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-sm font-semibold">周辺ホテル</h2>
-                  <p className="text-xs text-muted-foreground">楽天トラベルで周辺のホテルを検索</p>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-3">
-                {!hotels && !hotelsLoading && !hotelsError && (
-                  <Button
-                    onClick={loadHotels}
-                    disabled={!courseName || hotelsLoading}
-                    size="sm"
-                    className="rounded-lg"
-                  >
-                    <HotelIcon className="size-3.5 mr-1.5" />
-                    周辺ホテルを検索
-                  </Button>
-                )}
-
-                {hotelsLoading && (
-                  <div className="flex items-center gap-3 text-muted-foreground py-2">
-                    <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    <span className="text-sm">楽天トラベルで検索中…</span>
-                  </div>
-                )}
-
-                {hotelsError && (
-                  <div className="space-y-2">
-                    <div className="rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">
-                      {hotelsError}
-                    </div>
-                    <Button onClick={loadHotels} size="sm" variant="outline" className="rounded-lg">
-                      再試行
-                    </Button>
-                  </div>
-                )}
-
-                {hotels && !hotelsLoading && (
-                  <div className="space-y-2.5">
-                    {hotelsArea && (
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
-                          「{hotelsArea}」周辺のホテル
-                        </p>
-                        <button
-                          type="button"
-                          onClick={loadHotels}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          再検索
-                        </button>
-                      </div>
-                    )}
-
-                    {hotels.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4 text-center">
-                        該当するホテルが見つかりませんでした
-                      </p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {hotels.map((hotel, i) => (
-                          <li key={hotel.hotelNo ?? i}>
-                            <div className="rounded-xl border border-border/50 bg-muted/10 p-3 flex gap-3 hover:bg-muted/20 transition-colors">
-                              {hotel.imageUrl && (
-                                <div className="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-muted">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={hotel.imageUrl}
-                                    alt={hotel.hotelName ?? "ホテル"}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0 space-y-1">
-                                <p className="text-sm font-semibold leading-snug line-clamp-1">
-                                  {hotel.hotelName}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                                  {hotel.reviewAverage != null && hotel.reviewAverage > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 text-amber-500">
-                                      <StarIcon className="size-3 fill-amber-400" />
-                                      {hotel.reviewAverage.toFixed(1)}
-                                      {hotel.reviewCount != null && (
-                                        <span className="text-muted-foreground ml-0.5">
-                                          ({hotel.reviewCount}件)
-                                        </span>
-                                      )}
-                                    </span>
-                                  )}
-                                  {hotel.nearestStation && (
-                                    <span className="flex items-center gap-0.5">
-                                      <MapPinIcon className="size-3 shrink-0" />
-                                      {hotel.nearestStation}駅
-                                    </span>
-                                  )}
-                                  {hotel.minCharge != null && (
-                                    <span className="font-semibold text-foreground">
-                                      ¥{hotel.minCharge.toLocaleString()}~/泊
-                                    </span>
-                                  )}
-                                </div>
-                                {hotel.hotelUrl && (
-                                  <a
-                                    href={hotel.hotelUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline mt-0.5"
-                                  >
-                                    楽天トラベルで見る
-                                    <ExternalLinkIcon className="size-2.5 shrink-0" />
-                                  </a>
-                                )}
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </div>
             </section>
 
             {/* ── 周辺検索（AI）セクション ── */}

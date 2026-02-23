@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ゴルフ場 最安値比較",
   description:
-    "楽天GORA・じゃらんゴルフなどの料金をまとめて比較。今いちばん安いプランがすぐわかります。",
+    "楽天GORAのプランを安い順に表示。最安プランがすぐわかります。",
 };
 
 export default function RootLayout({

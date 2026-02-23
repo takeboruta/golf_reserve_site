@@ -146,7 +146,7 @@ export default function Home() {
             </span>
           </div>
           <p className="text-sm sm:text-base text-white/75 mt-1">
-            楽天GORA・じゃらんのプランをまとめて比較。今いちばん安いプランがすぐわかります。
+            楽天GORAのプランを安い順に表示。最安プランがすぐわかります。
           </p>
         </div>
       </div>
