@@ -13,9 +13,13 @@ const tomorrow = () => {
   return d.toISOString().slice(0, 10);
 };
 
+const DEFAULT_MIN_PRICE = "10000";
+const DEFAULT_MAX_PRICE = "20000";
+
 export interface SearchParams {
   playDate: string;
   areaCode: string;
+  minPrice: string;
   maxPrice: string;
   numberOfPeople: string;
 }
@@ -27,16 +31,27 @@ interface SearchFormProps {
 
 export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
   const [playDate, setPlayDate] = useState(tomorrow());
-  const [areaCode, setAreaCode] = useState("102");
-  const [maxPrice, setMaxPrice] = useState("");
+  const [areaCodes, setAreaCodes] = useState<string[]>(["102"]);
+  const [minPrice, setMinPrice] = useState(DEFAULT_MIN_PRICE);
+  const [maxPrice, setMaxPrice] = useState(DEFAULT_MAX_PRICE);
   const [numberOfPeople, setNumberOfPeople] = useState("4");
+
+  const toggleArea = (value: string) => {
+    setAreaCodes((prev) =>
+      prev.includes(value)
+        ? prev.filter((v) => v !== value)
+        : [...prev, value]
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const areaCode = areaCodes.length > 0 ? areaCodes.join(",") : "102";
     onSearch({
       playDate,
       areaCode,
-      maxPrice: maxPrice.trim() || "",
+      minPrice: minPrice.trim() || DEFAULT_MIN_PRICE,
+      maxPrice: maxPrice.trim() || DEFAULT_MAX_PRICE,
       numberOfPeople: numberOfPeople.trim() || "4",
     });
   };
@@ -62,34 +77,49 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
             />
           </div>
           <div className="grid gap-2">
-            <label htmlFor="areaCode" className="text-sm font-medium">
-              エリア
-            </label>
-            <select
-              id="areaCode"
-              value={areaCode}
-              onChange={(e) => setAreaCode(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
-            >
+            <span className="text-sm font-medium">エリア（複数選択可）</span>
+            <div className="max-h-40 overflow-y-auto rounded-md border border-input p-3 space-y-2 bg-transparent">
               {GORA_AREA_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+                <label
+                  key={opt.value}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={areaCodes.includes(opt.value)}
+                    onChange={() => toggleArea(opt.value)}
+                    className="rounded border-input"
+                  />
+                  <span className="text-sm">{opt.label}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
-          <div className="grid gap-2">
-            <label htmlFor="maxPrice" className="text-sm font-medium">
-              予算上限（円）
-            </label>
-            <Input
-              id="maxPrice"
-              type="number"
-              placeholder="例: 15000"
-              min={0}
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <label htmlFor="minPrice" className="text-sm font-medium">
+                予算下限（円）
+              </label>
+              <Input
+                id="minPrice"
+                type="number"
+                min={0}
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="maxPrice" className="text-sm font-medium">
+                予算上限（円）
+              </label>
+              <Input
+                id="maxPrice"
+                type="number"
+                min={0}
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </div>
           </div>
           <div className="grid gap-2">
             <label htmlFor="numberOfPeople" className="text-sm font-medium">

@@ -7,7 +7,7 @@
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui
-- **API**: 楽天GORA API（プラン検索・ゴルフ場検索）、じゃらんゴルフ（スタブ・将来連携用）
+- **API**: 楽天GORA API（プラン検索・ゴルフ場検索）、じゃらんゴルフ（公式API非公開のため、GORA結果を流用したデモ用表示）
 
 ## セットアップ
 
@@ -25,14 +25,19 @@ npm install
 cp .env.example .env.local
 ```
 
-**必須:**
+**必須（楽天GORA API）:**
 
-- `RAKUTEN_APP_ID` … 楽天ウェブサービスでアプリ登録して取得した Application ID  
-  - 登録: https://webservice.rakuten.co.jp/app/list
+- `RAKUTEN_APP_ID` … アプリケーションID（楽天でアプリ登録して取得）
+- `RAKUTEN_APPLICATION_ID` でも同じ値を設定可能（`RAKUTEN_APP_ID` のエイリアス）
+- 登録: https://webservice.rakuten.co.jp/app/list
+
+**任意（楽天アフィリエイト）:**
+
+- `RAKUTEN_AFFILIATE_ID` … 楽天アフィリエイトID（成果計測用）
 
 **任意:**
 
-- `RECRUIT_API_KEY` … じゃらんゴルフ API 連携用（現状は未使用・将来用）
+- `RECRUIT_API_KEY` … じゃらんゴルフ公式API連携用（未設定時は楽天GORA結果を流用したデモ用じゃらん表示）
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` … 検索履歴・お気に入り用（未設定時は空で動作）
 
 ### 3. 開発サーバー起動
@@ -96,11 +101,12 @@ git push -u origin main
    - https://vercel.com で「New Project」→ 対象リポジトリを選択
 3. **環境変数の設定**  
    - Project Settings → Environment Variables で設定:
-     - `RAKUTEN_APP_ID` … いったん空でもデプロイは可能。後から楽天でアプリ作成し、発行された Application ID をここに追加
+     - `RAKUTEN_APP_ID`（必須）… 楽天 Web Service のアプリケーションID
+     - `RAKUTEN_AFFILIATE_ID`（任意）… 楽天アフィリエイトID
 4. **デプロイ**  
    - 初回デプロイ後、`https://〇〇.vercel.app` が発行されます。このURLを楽天ウェブサービス「アプリ登録」のアプリケーションURLに設定
 5. **楽天でアプリ登録**  
-   - https://webservice.rakuten.co.jp/app/list で新規作成し、アプリケーションURLに Vercel のURLを入力 → Application ID を取得し、Vercel の環境変数 `RAKUTEN_APP_ID` に追加 → 再デプロイ（または「Redeploy」）
+   - https://webservice.rakuten.co.jp/app/list で新規作成し、アプリケーションURLに Vercel のURLを入力 → **アプリケーションID** を取得し、Vercel の環境変数 `RAKUTEN_APP_ID` に追加（必要なら `RAKUTEN_AFFILIATE_ID` も追加）→ 再デプロイ（「Redeploy」）
 
 ## API ルート
 

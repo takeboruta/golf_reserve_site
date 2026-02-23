@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     if (e instanceof RakutenApiError) {
       const status =
-        e.code === "wrong_parameter"
+        e.code === "wrong_parameter" || e.code === "invalid_app_id_format"
           ? 400
           : e.code === "not_found"
             ? 404

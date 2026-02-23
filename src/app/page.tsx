@@ -25,8 +25,9 @@ export default function Home() {
       const q = new URLSearchParams({
         playDate: params.playDate,
         areaCode: params.areaCode,
-        ...(params.numberOfPeople && { numberOfPeople: params.numberOfPeople }),
+        ...(params.minPrice && { minPrice: params.minPrice }),
         ...(params.maxPrice && { maxPrice: params.maxPrice }),
+        ...(params.numberOfPeople && { numberOfPeople: params.numberOfPeople }),
       });
       const res = await fetch(`/api/search?${q.toString()}`);
       const data = await res.json();
@@ -86,7 +87,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t py-4 text-center text-sm text-muted-foreground">
-        楽天GORA等の料金を比較表示しています。予約は各サイトで行ってください。
+        楽天GORA・じゃらんの料金を比較表示しています。じゃらんは公式API非公開のためデモ用表示です。予約は各サイトで行ってください。
       </footer>
     </div>
   );

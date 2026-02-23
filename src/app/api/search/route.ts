@@ -60,13 +60,18 @@ export async function GET(request: NextRequest) {
       hits: 30,
       sort: "price",
     });
-    const goraItems = (goraData as { items?: GoraItem[] }).items;
+    const goraItems = (goraData as { Items?: GoraItem[] }).Items;
     allPlans = normalizeGoraPlans(goraItems, playDate);
   } catch (e) {
     if (e instanceof RakutenApiError) {
       return Response.json(
         { error: e.message, code: e.code },
-        { status: e.code === "wrong_parameter" ? 400 : e.status ?? 502 }
+        {
+          status:
+            e.code === "wrong_parameter" || e.code === "invalid_app_id_format"
+              ? 400
+              : e.status ?? 502,
+        }
       );
     }
     return Response.json(
@@ -75,14 +80,17 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // じゃらん（スタブのため現状は空）
-  const jalanPlans = await fetchJalanPlans({
-    playDate,
-    areaCode,
-    minPrice: budgetMin,
-    maxPrice: budgetMax,
-    numberOfPeople: people,
-  });
+  // じゃらん（公式API非公開のため、GORA結果を流用したデモ用データをマージ）
+  const jalanPlans = await fetchJalanPlans(
+    {
+      playDate,
+      areaCode,
+      minPrice: budgetMin,
+      maxPrice: budgetMax,
+      numberOfPeople: people,
+    },
+    allPlans
+  );
   allPlans = allPlans.concat(jalanPlans);
 
   // 人数フィルタ（GORAの playerNumMin/Max はプラン単位のため、ここでは簡易に予算のみ）

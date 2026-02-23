@@ -1,8 +1,22 @@
 import type { GoraPlanItem, GoraPlanDetail } from "@/types/gora";
 import type { NormalizedPlan } from "@/types/search";
 
-/** 楽天GORA プラン検索API 1件（ネスト/フラット両対応） */
+type PlanInfoItem = {
+  planId: number;
+  planName?: string;
+  price?: number;
+  startTimeZone?: string;
+  lunch?: number;
+  callInfo?: {
+    reservePageUrlPC?: string;
+    reservePageUrlMobile?: string;
+  };
+};
+
+/** 楽天GORA プラン検索API 1件 */
 export type GoraItem = GoraPlanItem & {
+  planInfo?: PlanInfoItem[];
+  /** 旧API互換 */
   plans?: GoraPlanDetail[];
   planId?: number;
   planName?: string;
@@ -13,7 +27,8 @@ export type GoraItem = GoraPlanItem & {
 
 /**
  * 楽天GORA プラン検索APIのレスポンスを共通正規化型に変換
- * ネスト形式（items[].plans[]）とフラット形式（items[]がプラン）の両方に対応
+ * 新API: Items[].planInfo[]
+ * 旧API: items[].plans[] / items[]がプラン
  */
 export function normalizeGoraPlans(
   items: GoraItem[] | undefined,
@@ -24,7 +39,7 @@ export function normalizeGoraPlans(
   const result: NormalizedPlan[] = [];
 
   for (const course of items) {
-    const plans = course.plans ?? [];
+    const plans: PlanInfoItem[] = course.planInfo ?? (course.plans as PlanInfoItem[] | undefined) ?? [];
     if (plans.length > 0) {
       for (const p of plans) {
         result.push({
@@ -35,17 +50,18 @@ export function normalizeGoraPlans(
           courseName: course.golfCourseName ?? "",
           prefecture: course.prefecture,
           imageUrl: course.golfCourseImageUrl,
-          reserveUrl: course.reserveCalUrlPC ?? course.reserveCalUrlMobile,
+          reserveUrl:
+            p.callInfo?.reservePageUrlPC ??
+            p.callInfo?.reservePageUrlMobile ??
+            course.reserveCalUrlPC ??
+            course.reserveCalUrlMobile,
           source: "gora",
           playDate,
           startTimeZone: p.startTimeZone,
           lunch: p.lunch === 1,
         });
       }
-    } else if (
-      course.planId != null &&
-      course.price != null
-    ) {
+    } else if (course.planId != null && course.price != null) {
       result.push({
         planId: `gora-${course.golfCourseId}-${course.planId}`,
         planName: (course.planName as string) ?? "",

@@ -1,12 +1,14 @@
 /**
  * 楽天GORA API 呼び出しヘルパー
- * 環境変数 RAKUTEN_APP_ID 必須
+ * 環境変数 RAKUTEN_APP_ID（または RAKUTEN_APPLICATION_ID）と RAKUTEN_ACCESS_KEY が必須です。
+ * affiliateId がある場合は RAKUTEN_AFFILIATE_ID に設定してください（任意）。
+ * ※ 2026-02-10 の API 移行により openapi.rakuten.co.jp に変更。
  */
 
 const GORA_COURSE_SEARCH_URL =
-  "https://app.rakuten.co.jp/services/api/Gora/GoraGolfCourseSearch/20170623";
+  "https://openapi.rakuten.co.jp/engine/api/Gora/GoraGolfCourseSearch/20170623";
 const GORA_PLAN_SEARCH_URL =
-  "https://app.rakuten.co.jp/services/api/Gora/GoraPlanSearch/20170623";
+  "https://openapi.rakuten.co.jp/engine/api/Gora/GoraPlanSearch/20170623";
 
 export class RakutenApiError extends Error {
   constructor(
@@ -19,15 +21,20 @@ export class RakutenApiError extends Error {
   }
 }
 
-function getAppId(): string {
-  const id = process.env.RAKUTEN_APP_ID;
-  if (!id) {
+function getRakutenCreds(): { applicationId: string; accessKey?: string; affiliateId?: string; referer: string } {
+  const applicationId =
+    process.env.RAKUTEN_APPLICATION_ID ?? process.env.RAKUTEN_APP_ID;
+  const accessKey = process.env.RAKUTEN_ACCESS_KEY;
+  const affiliateId = process.env.RAKUTEN_AFFILIATE_ID;
+  const referer = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  if (!applicationId) {
     throw new RakutenApiError(
-      "RAKUTEN_APP_ID が設定されていません",
+      "RAKUTEN_APP_ID（または RAKUTEN_APPLICATION_ID）が設定されていません",
       "missing_app_id"
     );
   }
-  return id;
+
+  return { applicationId, accessKey, affiliateId, referer };
 }
 
 /** ゴルフ場検索（エリア・キーワード等） */
@@ -37,11 +44,13 @@ export async function fetchGoraCourses(params: {
   hits?: number;
   page?: number;
 }) {
-  const appId = getAppId();
+  const { applicationId, accessKey, affiliateId, referer } = getRakutenCreds();
   const searchParams = new URLSearchParams({
-    applicationId: appId,
+    applicationId,
     format: "json",
     formatVersion: "2",
+    ...(accessKey && { accessKey }),
+    ...(affiliateId && { affiliateId }),
     ...(params.areaCode && { areaCode: params.areaCode }),
     ...(params.keyword && { keyword: params.keyword }),
     ...(params.hits && { hits: String(params.hits) }),
@@ -49,7 +58,7 @@ export async function fetchGoraCourses(params: {
   });
 
   const url = `${GORA_COURSE_SEARCH_URL}?${searchParams.toString()}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { Referer: referer } });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -82,11 +91,13 @@ export async function fetchGoraPlans(params: {
   page?: number;
   sort?: string;
 }) {
-  const appId = getAppId();
+  const { applicationId, accessKey, affiliateId, referer } = getRakutenCreds();
   const searchParams = new URLSearchParams({
-    applicationId: appId,
+    applicationId,
     format: "json",
     formatVersion: "2",
+    ...(accessKey && { accessKey }),
+    ...(affiliateId && { affiliateId }),
     playDate: params.playDate,
     ...(params.areaCode && { areaCode: params.areaCode }),
     ...(params.golfCourseId != null && {
@@ -100,7 +111,7 @@ export async function fetchGoraPlans(params: {
   });
 
   const url = `${GORA_PLAN_SEARCH_URL}?${searchParams.toString()}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { Referer: referer, Origin: referer } });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
