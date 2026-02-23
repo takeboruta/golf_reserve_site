@@ -11,6 +11,7 @@ import {
   ExternalLinkIcon,
   SearchIcon,
   ChevronDownIcon,
+  HeartIcon,
 } from "lucide-react";
 
 interface CalendarDay {
@@ -65,9 +66,50 @@ export default function CourseDetailPage({
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState<string | null>(null);
 
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+
   useEffect(() => {
     params.then((p) => setCourseId(p.courseId));
   }, [params]);
+
+  const loadFavorites = useCallback(async () => {
+    if (!courseId) return;
+    try {
+      const res = await fetch("/api/favorites", { credentials: "same-origin" });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.items)) {
+        setIsFavorite(data.items.some((item: { courseId: string }) => item.courseId === courseId));
+      }
+    } catch {
+      // ignore
+    }
+  }, [courseId]);
+
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites]);
+
+  const toggleFavorite = useCallback(async () => {
+    if (!courseId || favLoading) return;
+    setFavLoading(true);
+    try {
+      await fetch("/api/favorites", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId,
+          courseName: courseName ?? undefined,
+          source: "gora",
+          action: isFavorite ? "remove" : "add",
+        }),
+      });
+      await loadFavorites();
+    } finally {
+      setFavLoading(false);
+    }
+  }, [courseId, courseName, isFavorite, favLoading, loadFavorites]);
 
   const loadCalendar = useCallback(async (id: string, dayCount: number = 14) => {
     setLoading(true);
@@ -140,6 +182,18 @@ export default function CourseDetailPage({
               <p className="text-xs text-muted-foreground">価格カレンダー・周辺情報</p>
             )}
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFavorite}
+            disabled={favLoading}
+            className="shrink-0"
+            aria-label={isFavorite ? "お気に入りから削除" : "お気に入りに追加"}
+          >
+            <HeartIcon
+              className={`size-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
+            />
+          </Button>
         </div>
       </header>
 

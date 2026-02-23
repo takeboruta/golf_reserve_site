@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import { SearchForm, type SearchParams } from "@/components/SearchForm";
 import { PlanCard } from "@/components/PlanCard";
 import type { NormalizedPlan } from "@/types/search";
@@ -9,6 +10,15 @@ const INITIAL_PAGE_SIZE = 10;
 const LOAD_MORE_SIZE = 10;
 
 const SEARCH_PARAMS_STORAGE_KEY = "golf_search_params";
+
+interface HistoryItem {
+  playDate: string;
+  areaCode: string;
+  keyword?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  createdAt: string;
+}
 
 interface SearchResult {
   playDate: string;
@@ -59,6 +69,21 @@ export default function Home() {
   const [restoredParams] = useState<SearchParams | null>(() =>
     typeof window === "undefined" ? null : loadStoredParams()
   );
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/history", { credentials: "same-origin" });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.items)) setHistoryItems(data.items);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const runSearch = useCallback(async (params: SearchParams) => {
     setLoading(true);
@@ -81,6 +106,18 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "検索に失敗しました");
       setResult(data);
+      fetch("/api/history", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playDate: params.playDate,
+          areaCode: params.areaCode,
+          keyword: params.keyword ?? "",
+          minPrice: params.minPrice,
+          maxPrice: params.maxPrice,
+        }),
+      }).then(() => loadHistory()).catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "検索に失敗しました");
     } finally {
@@ -95,6 +132,22 @@ export default function Home() {
   const handleSearch = async (params: SearchParams) => {
     saveStoredParams(params);
     await runSearch(params);
+  };
+
+  const applyHistoryItem = (item: HistoryItem) => {
+    const params: SearchParams = {
+      playDate: item.playDate,
+      areaCode: item.areaCode,
+      keyword: item.keyword ?? "",
+      lunchOnly: "0",
+      sort: "price",
+      startTimeZone: "",
+      minPrice: item.minPrice ?? "10000",
+      maxPrice: item.maxPrice ?? "20000",
+      numberOfPeople: "4",
+    };
+    saveStoredParams(params);
+    runSearch(params);
   };
 
   useEffect(() => {
@@ -148,6 +201,12 @@ export default function Home() {
           <p className="text-sm sm:text-base text-white/75 mt-1">
             楽天GORAのプランを安い順に表示。最安プランがすぐわかります。
           </p>
+          <Link
+            href="/favorites"
+            className="inline-block mt-3 text-sm text-white/80 hover:text-white underline"
+          >
+            お気に入り
+          </Link>
         </div>
       </div>
 
@@ -160,6 +219,33 @@ export default function Home() {
             initialParams={restoredParams}
           />
         </div>
+
+        {historyItems.length > 0 && (
+          <section className="mb-6">
+            <h2 className="text-sm font-medium text-muted-foreground mb-2">
+              最近の検索
+            </h2>
+            <ul className="flex flex-wrap gap-2">
+              {historyItems.map((item, i) => (
+                <li key={`${item.playDate}-${item.areaCode}-${item.keyword ?? ""}-${i}`}>
+                  <button
+                    type="button"
+                    onClick={() => applyHistoryItem(item)}
+                    className="rounded-lg border bg-card px-3 py-2 text-left text-sm hover:bg-muted/50 transition"
+                  >
+                    <span className="text-foreground font-medium">
+                      {item.playDate}
+                    </span>
+                    <span className="text-muted-foreground ml-1">
+                      {item.areaCode}
+                      {item.keyword ? ` · ${item.keyword}` : ""}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {error && (
           <div className="rounded-xl border border-destructive/40 bg-destructive/8 text-destructive px-4 py-3 text-sm mb-6">

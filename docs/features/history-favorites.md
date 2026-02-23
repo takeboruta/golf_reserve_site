@@ -1,40 +1,46 @@
-# 機能設計: 履歴・お気に入り（Supabase拡張枠）
+# 機能設計: 履歴・お気に入り（Cookie 永続化）
 
 ## 目的
 
-- 将来的に検索履歴とお気に入りを永続化し、再訪時の操作性を向上する。
+- 検索履歴とお気に入りを同一ブラウザ内で永続化し、再訪時の操作性を向上する。DB を使わず Cookie のみで実装する。
 
 ## 対象
 
 - API: `src/app/api/history/route.ts`
 - API: `src/app/api/favorites/route.ts`
-- 設定判定: `src/lib/supabase.ts`
+- 共通: `src/lib/cookie-store.ts`
+- 設定判定: `src/lib/supabase.ts`（Supabase 設定時は将来実装枠）
 
-## 現状実装
+## Cookie 永続化（Supabase 未設定時）
 
-- `isSupabaseConfigured()` が `false` の場合:
-  - `GET` は空配列を返却
-  - `POST` は `ok: true` を返却（no-op）
-- `true` の場合も DB I/O は未実装（TODO）
+| 項目     | 検索履歴              | お気に入り        |
+| -------- | --------------------- | ----------------- |
+| Cookie 名 | `golf_search_history` | `golf_favorites`  |
+| 件数上限 | 20 件（古いものから削除） | 50 件             |
+| 有効期限 | 1 年（Max-Age=31536000） | 1 年              |
+| オプション | Path=/; SameSite=Lax; HttpOnly | 同上              |
 
-## インターフェース（現状）
+- Supabase が未設定のときは、上記 Cookie で GET/POST を読み書きする。
+- Supabase が設定されているときは、従来どおり GET は空配列・POST は `ok: true` のまま（TODO: 将来 Supabase から取得/保存を実装）。
 
-- `GET /api/history` → `{ items: [] }`
-- `POST /api/history` → `{ ok: true }`
-- `GET /api/favorites` → `{ items: [] }`
-- `POST /api/favorites` → `{ ok: true }`
+## データ形
 
-## 実装予定
+- **検索履歴 1 件**: `{ playDate, areaCode, keyword?, minPrice?, maxPrice?, createdAt }`
+- **お気に入り 1 件**: `{ courseId, courseName?, source?, addedAt }`
 
-- Supabase テーブル設計
-  - `search_history`
-  - `favorites`
-- ユーザー識別
-  - cookie/session 連携
-- API 認可
-  - ユーザー単位アクセス制御
+## インターフェース
+
+- `GET /api/history` → `{ items: HistoryItem[] }`
+- `POST /api/history` → body: `{ playDate, areaCode, keyword?, minPrice?, maxPrice? }` → `{ ok: true }`
+- `GET /api/favorites` → `{ items: FavoriteItem[] }`
+- `POST /api/favorites` → body: `{ courseId, courseName?, source?, action: "add" | "remove" }` → `{ ok: true }`
+
+## UI
+
+- **検索履歴**: トップページに「最近の検索」を表示。クリックで検索条件を復元して再検索。
+- **お気に入り**: コース詳細ページのヘッダーにハートボタンで追加/削除。`/favorites` で一覧表示し、コース名クリックでコース詳細へ遷移。
 
 ## 非機能要件
 
 - 失敗時も検索本体機能に影響を与えない
-- 書き込み失敗の監視ログを追加
+- Cookie は同一オリジンのみ送信。デバイス・ブラウザを変えると履歴・お気に入りは共有されない
